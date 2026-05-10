@@ -21,8 +21,12 @@
   </properties>
   
 <dependencies>
-    <!-- Apache POI voor Excel -->
     <dependency>
+	  <groupId>kwee</groupId>
+	  <artifactId>library</artifactId>
+	  <version>${kweeLibrary.version}</version>
+    </dependency>    
+    <dependency>          <!-- Apache POI voor Excel -->
         <groupId>org.apache.poi</groupId>
         <artifactId>poi</artifactId>
         <version>5.2.5</version>
@@ -34,11 +38,18 @@
     </dependency>
     
     <!-- JavaMail (IMAP) -->
+    <!--
     <dependency>
       <groupId>com.sun.mail</groupId>
       <artifactId>javax.mail</artifactId>
       <version>${javamail.version}</version>
       <scope>provided</scope>
+    </dependency>
+    -->
+    <dependency>
+      <groupId>com.sun.mail</groupId>
+      <artifactId>jakarta.mail</artifactId>
+      <version>2.0.1</version>
     </dependency>
 
     <!-- Apache Velocity voor templating -->

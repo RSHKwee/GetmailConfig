@@ -1,6 +1,6 @@
 package kwee.getmailconfig.library;
 
-import javax.mail.*;
+import jakarta.mail.*;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
@@ -8,18 +8,18 @@ import java.io.*;
 import java.util.*;
 
 public class AccountMigrator {
-  List<Map<String, String>> excelData;
-  String outputDirectory;
+
+  private String outputDirectory;
+  private List<Account> accounts;
 
   public AccountMigrator(String excelPad) throws Exception {
-    ExcelLezer excel = new ExcelLezer(excelPad);
-    excelData = excel.getExcelData();
+    Accounts acc = new Accounts(excelPad);
+    accounts = acc.readAccountsFromExcel();
   }
 
   // Bestaande methode voor template processing
   public void generateAccountFile(String templatePath, String a_outputDirectory) throws Exception {
     // Lees accounts uit Excel (jouw bestaande code)
-    List<Account> accounts = readAccountsFromExcel();
     Properties props = new Properties();
     outputDirectory = a_outputDirectory;
 
@@ -41,66 +41,13 @@ public class AccountMigrator {
     }
   }
 
-  private List<Account> readAccountsFromExcel() {
-    List<Account> Accounts = new ArrayList<Account>();
-    int rijNummer = 1;
-    for (Map<String, String> rijData : excelData) {
-      String email = "";
-      String password = "";
-      String imapHost = "";
-      boolean ssl = true;
-      for (Map.Entry<String, String> entry : rijData.entrySet()) {
-        if (entry.getKey().toUpperCase().contains("RETRIEVERSERVER")) {
-          imapHost = entry.getValue();
-        }
-        if (entry.getKey().toUpperCase().contains("RETRIEVERPASSWORD")) {
-          password = entry.getValue();
-        }
-        if (entry.getKey().toUpperCase().contains("RETRIEVERUSER")) {
-          email = entry.getValue();
-        }
-        if (entry.getKey().toUpperCase().contains("RETRIEVERTYPE")) {
-          if (entry.getValue().contains("SSL")) {
-            ssl = true;
-          } else {
-            ssl = false;
-          }
-        }
-      }
-      Account account = new Account();
-      account.setEmail(email);
-      account.setImapHost(imapHost);
-      account.setPassword(password);
-      account.setSsl(ssl);
-      Accounts.add(account);
-      rijNummer++;
-    }
-    return Accounts;
-  }
-
   // NIEUWE methode: Haal IMAP folders op en genereer .secret bestand
   private void generateIMAPFolderFile(Account account, VelocityEngine velocityEngine) throws Exception {
     System.out.println("Verwerken: " + account.getEmail());
 
-    // Verbind met IMAP server
-    Properties props = new Properties();
-    props.setProperty("mail.imap.host", account.getImapHost());
-
-    if (account.isSsl()) {
-      props.setProperty("mail.store.protocol", "imaps");
-      props.setProperty("mail.imap.port", "993");
-      props.setProperty("mail.imap.starttls.enable", "true");
-    } else {
-      props.setProperty("mail.store.protocol", "imap");
-      props.setProperty("mail.imap.port", "143");
-      props.setProperty("mail.imap.starttls.enable", "false");
-      props.setProperty("mail.imap.ssl.enable", "false");
-    }
-
-    Session session = Session.getInstance(props);
-    Store store = session.getStore();
-
+    Store store = null;
     try {
+      store = MailStore.getMailStore(account);
       store.connect(account.getImapHost(), account.getEmail(), account.getPassword());
 
       // Verzamel folder informatie
@@ -118,9 +65,8 @@ public class AccountMigrator {
       context.put("timestamp", new Date());
 
       // Genereer .secret bestand
-      Template template = velocityEngine.getTemplate("imap-folder-secret.vm");
-      String outputPath = outputDirectory + File.separator + account.getImapHost() + " " + account.getEmail()
-          + ".secret";
+      Template template = velocityEngine.getTemplate("imap-folder-tree.vm");
+      String outputPath = outputDirectory + File.separator + account.getImapHost() + " " + account.getEmail() + ".tree";
 
       try (Writer writer = new FileWriter(outputPath)) {
         template.merge(context, writer);
@@ -160,47 +106,6 @@ public class AccountMigrator {
       if (!wasOpen && folder.isOpen()) {
         folder.close(false);
       }
-    }
-  }
-
-  // Helper classes
-  public static class Account {
-    private String email;
-    private String password;
-    private String imapHost;
-    private boolean ssl = true;
-
-    // getters/setters
-    public String getEmail() {
-      return email;
-    }
-
-    public String getPassword() {
-      return password;
-    }
-
-    public String getImapHost() {
-      return imapHost;
-    }
-
-    public boolean isSsl() {
-      return ssl;
-    }
-
-    public void setEmail(String email) {
-      this.email = email;
-    }
-
-    public void setPassword(String password) {
-      this.password = password;
-    }
-
-    public void setImapHost(String imapHost) {
-      this.imapHost = imapHost;
-    }
-
-    public void setSsl(boolean ssl) {
-      this.ssl = ssl;
     }
   }
 

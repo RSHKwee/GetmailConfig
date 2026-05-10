@@ -1,4 +1,4 @@
-package kwee.getmailconfig.library;
+package zandbak;
 
 import java.util.Properties;
 
@@ -11,26 +11,35 @@ import jakarta.mail.event.ConnectionListener;
 
 public class GmailFolderLister {
 
-  public static void getGmailFolders(String a_Host, String a_User, String a_Passwd, int a_Port) {
+  public static void main(String[] args) {
     // Configuratiegegevens
-    String host = a_Host;
-    String username = a_User;
-    String password = a_Passwd;
-    int port = a_Port;
+    // String host = "imap.gmail.com";
+    // String username = "cym.kwee@gmail.com";
+    // String password = "ycgapizqflbgaibe";
+    // int port = 993;
+
+    // String host = "imap.mail.yahoo.com";
+    // String username = "rshkwee";
+    // String password = "uzxheisteseoemvy";
+    // int port = 993;
+    String host = "192.168.2.210";
+    String username = "wilma@kwee.cumail.nl";
+    String password = "Baracuda2308";
+    int port = 143;
 
     try {
       // Eigenschappen instellen
       Properties properties = new Properties();
       properties.put("mail.imap.host", host);
       properties.put("mail.imap.port", port);
-      properties.put("mail.imap.ssl.enable", "true");
-      properties.put("mail.imap.auth", "true");
+      properties.put("mail.imap.ssl.enable", "false");
+      properties.put("mail.imap.auth", "false");
       properties.put("mail.imap.starttls.enable", "true");
       properties.put("mail.store.protocol", "imap");
 
       // Sessie maken
       Session session = Session.getInstance(properties);
-      session.setDebug(false); // Debug output aanzetten
+      session.setDebug(true); // Debug output aanzetten
 
       // Store object maken
       Store store = session.getStore("imap");
@@ -97,15 +106,4 @@ public class GmailFolderLister {
       }
     }
   }
-
-  public static void main(String[] args) {
-    // Configuratiegegevens
-    String host = "imap.gmail.com";
-    String username = "cym.kwee@gmail.com";
-    String password = "ycgapizqflbgaibe";
-    int port = 993;
-    getGmailFolders(host, username, password, port);
-
-  }
-
 }

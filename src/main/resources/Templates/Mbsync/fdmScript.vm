@@ -1,0 +1,19 @@
+# Actie: Stuur het bericht door naar Dovecot's LDA voor bezorging en Sieve-verwerking
+action "deliver_via_dovecot" mda "/usr/lib/dovecot/dovecot-lda -d %u"
+
+### ACCOUNT: corianne ###
+account "corianne" maildir "/home/mail/vhosts/kwee.cumail.nl/corianne/Maildir/Gmail/INBOX" {
+   # Deze actie geldt voor alle berichten in dit account
+   match all action "deliver_via_dovecot"
+}
+
+### ACCOUNT: rene ###
+account "rene" maildir "/pad/naar/jouw/dovecot/vhosts/kwee.cumail.nl/rene/Maildir/Gmail/INBOX" {
+   match all action "deliver_via_dovecot"
+}
+
+### ACCOUNT: wilma ###
+# (Herhaal voor elke gebruiker en elke gewenste externe account, zoals HCC, Yahoo, etc.)
+account "wilma" maildir "/pad/naar/jouw/dovecot/vhosts/kwee.cumail.nl/wilma/Maildir/Gmail/INBOX" {
+   match all action "deliver_via_dovecot"
+}

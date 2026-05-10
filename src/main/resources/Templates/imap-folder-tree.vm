@@ -1,0 +1,25 @@
+#*
+    IMAP Folder Structure Secret File
+    Generated for: ${account.email}
+    Date: ${timestamp}
+*#
+[IMAP_FOLDERS]
+#foreach( $folder in $folders )
+${folder.fullName}=${folder.totalMessages},${folder.unreadMessages}
+#end
+
+[STATISTICS]
+Total folders: ${folders.size()}
+Total messages: #set( $total = 0 )#foreach( $f in $folders )#set( $total = $total + $f.totalMessages )#end${total}
+Total unread: #set( $unread = 0 )#foreach( $f in $folders )#set( $unread = $unread + $f.unreadMessages )#end${unread}
+
+[IMAP_HIERARCHY]
+#macro( displayHierarchy $folderList $prefix )
+#foreach( $folder in $folderList )
+${prefix}${folder.fullName}
+#if( $folder.hasSubfolders )
+#displayHierarchy( $folder.subfolders "${prefix}  " )
+#end
+#end
+#end
+#displayHierarchy( $folders, "" )

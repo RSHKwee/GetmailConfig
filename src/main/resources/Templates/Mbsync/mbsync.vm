@@ -1,0 +1,61 @@
+# ========== Global Options =================
+Create Both
+Expunge Both
+Remove Both
+Sync All  
+CopyArrivalDate yes
+
+#foreach($row in $rows)
+  #if($foreach.index == 0) #end
+  #if($row.get("OK") == "ok")
+#========== $row.get("Subdir")-$row.get("Prefix") ============================
+IMAPAccount $row.get("Subdir")-$row.get("Prefix")
+Host $row.get("RetrieverServer")
+User $row.get("RetrieverUser")
+PassCmd "cat /home/mail/secrets/$row.get("Subdir")-$row.get("Prefix")"
+SSLType   $row.get("SSL")
+AuthMechs LOGIN 
+
+IMAPStore $row.get("Subdir")-$row.get("Prefix")-remote
+Account $row.get("Subdir")-$row.get("Prefix")
+
+MaildirStore $row.get("Subdir")-$row.get("Prefix")-local
+Path /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/$row.get("Prefix")/
+Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/$row.get("Prefix")/INBOX
+AltMap yes
+SubFolders Verbatim
+
+# Channel for INBOX alone
+Channel $row.get("Subdir")-$row.get("Prefix")-inbox
+  Far  :$row.get("Subdir")-$row.get("Prefix")-remote:INBOX
+  Near :$row.get("Subdir")-$row.get("Prefix")-local:INBOX
+  Create Both
+  Patterns *
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/$row.get("Prefix")/
+
+# Channel for all other folders, except INBOX
+Channel $row.get("Subdir")-$row.get("Prefix")-sub
+  Far  :$row.get("Subdir")-$row.get("Prefix")-remote:
+  Near :$row.get("Subdir")-$row.get("Prefix")-local:
+  Create Both
+  Patterns * !INBOX
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/$row.get("Prefix")/
+
+  #end  
+#end
+#========== Groups ===================================
+#set($currentSubdir = "")
+#foreach($row in $rows)
+  #if($row.get("Subdir") != $currentSubdir)
+    #if($foreach.index > 0)
+
+    #end
+    #set($currentSubdir = $row.get("Subdir"))
+#========== $row.get("Subdir") ============================
+Group $row.get("Subdir")
+  #end
+  #if($row.get("OK") == "ok")
+  Channel $row.get("Subdir")-$row.get("Prefix")-inbox
+  Channel $row.get("Subdir")-$row.get("Prefix")-sub
+  #end
+#end
