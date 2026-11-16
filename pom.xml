@@ -344,6 +344,8 @@
             </goals>
               <configuration>
                 <target> 
+                  <delete dir="${project.basedir}\BuildTools"/>
+                  <delete file="${project.basedir}\Library.iss"/>   
                   <delete file="${project.basedir}\keystore.jks"/>   
                 </target>
               </configuration>
