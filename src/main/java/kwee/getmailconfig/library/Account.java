@@ -6,6 +6,8 @@ public class Account {
   private String password;
   private String imapHost;
   private boolean ssl = true;
+  private String destination = "";
+  private String provider = "";
 
   // getters/setters
   public String getEmail() {
@@ -20,6 +22,14 @@ public class Account {
     return imapHost;
   }
 
+  public String getDestination() {
+    return destination;
+  }
+
+  public String getProvider() {
+    return provider;
+  }
+
   public boolean isSsl() {
     return ssl;
   }
@@ -32,11 +42,20 @@ public class Account {
     this.password = password;
   }
 
-  public void setImapHost(String imapHost) {
-    this.imapHost = imapHost;
+  public void setDestination(String destination) {
+    this.destination = destination;
   }
 
   public void setSsl(boolean ssl) {
     this.ssl = ssl;
   }
+
+  public void setImapHost(String imapHost) {
+    this.imapHost = imapHost;
+  }
+
+  public void setProvider(String provider) {
+    this.provider = provider;
+  }
+
 }

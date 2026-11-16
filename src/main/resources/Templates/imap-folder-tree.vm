@@ -1,8 +1,8 @@
-#*
-    IMAP Folder Structure Secret File
-    Generated for: ${account.email}
-    Date: ${timestamp}
-*#
++=============================================================
+|    IMAP Folder Structure Tree File
+|    Generated for: ${account.email}
+|    Date: ${timestamp}
++-------------------------------------------------------------
 [IMAP_FOLDERS]
 #foreach( $folder in $folders )
 ${folder.fullName}=${folder.totalMessages},${folder.unreadMessages}

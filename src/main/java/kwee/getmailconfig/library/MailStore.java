@@ -1,16 +1,12 @@
 package kwee.getmailconfig.library;
 
 import java.util.Properties;
-
-import org.apache.velocity.app.VelocityEngine;
-
 import jakarta.mail.Session;
 import jakarta.mail.Store;
-//import kwee.getmailconfig.library.Account;
 
 public class MailStore {
   static public Store getMailStore(Account account) throws Exception {
-    System.out.println("Verwerken: " + account.getEmail());
+    // System.out.println("Verwerken: " + account.getEmail());
 
     // Verbind met IMAP server
     Properties props = new Properties();

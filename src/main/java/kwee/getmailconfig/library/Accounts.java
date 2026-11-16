@@ -30,6 +30,8 @@ public class Accounts {
       String email = "";
       String password = "";
       String imapHost = "";
+      String destination = "";
+      String provider = "";
       boolean ssl = true;
       for (Map.Entry<String, String> entry : rijData.entrySet()) {
         if (entry.getKey().toUpperCase().contains("RETRIEVERSERVER")) {
@@ -48,12 +50,20 @@ public class Accounts {
             ssl = false;
           }
         }
+        if (entry.getKey().toUpperCase().contains("DESTINATIONADRESS")) {
+          destination = entry.getValue();
+        }
+        if (entry.getKey().toUpperCase().contains("PREFIX")) {
+          provider = entry.getValue();
+        }
       }
       Account account = new Account();
       account.setEmail(email);
       account.setImapHost(imapHost);
       account.setPassword(password);
       account.setSsl(ssl);
+      account.setDestination(destination);
+      account.setProvider(provider);
       Accounts.add(account);
       rijNummer++;
     }

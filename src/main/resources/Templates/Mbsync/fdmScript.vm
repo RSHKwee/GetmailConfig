@@ -1,5 +1,15 @@
-# Actie: Stuur het bericht door naar Dovecot's LDA voor bezorging en Sieve-verwerking
-action "deliver_via_dovecot" mda "/usr/lib/dovecot/dovecot-lda -d %u"
+ Options
+set maximum-size 50M
+set delete-oversized
+
+# Actie: Virus scanning with ClamAV
+action "clamav_scan" pipe "/usr/bin/clamdscan --stdout --no-summary --config-file=/etc/clamav/clamd.conf -"
+
+# Actie: Spam scanning with SpamAssassin
+action "spamassassin_scan" pipe "/usr/bin/spamc"
+
+# Actie: Deliver to Dovecot LDA
+action "deliver_via_dovecot" exec "/usr/local/bin/dovecot-lda-wrapper %a"
 
 ### ACCOUNT: corianne ###
 account "corianne" maildir "/home/mail/vhosts/kwee.cumail.nl/corianne/Maildir/Gmail/INBOX" {

@@ -1,8 +1,6 @@
 package kwee.getmailconfig.library;
 
 import jakarta.mail.*;
-//import jakarta.mail.internet.*;
-
 import java.util.List;
 
 public class MailMover {
@@ -10,16 +8,15 @@ public class MailMover {
   // private String outputDirectory;
   private static boolean move = true;
 
-  // private static final String FOLDER_WITH_DOT = "INBOX.INBOX";
-  // private static final String FOLDER_WITH_SLASH = "INBOX/INBOX";
   // Tijdelijke folder als buffer
   private static final String TEMP_FOLDER = "Tijdelijk";
   // De foute folders
   private static final String[] WRONG_FOLDERS = { "INBOX.INBOX", "INBOX/INBOX" };
 
-  public MailMover(String excelPad) throws Exception {
+  public MailMover(String excelPad, boolean a_move) throws Exception {
     Accounts acc = new Accounts(excelPad);
     accounts = acc.readAccountsFromExcel();
+    move = a_move;
   }
 
   public void checkPorviders() {
@@ -86,7 +83,7 @@ public class MailMover {
     try {
       Folder sourceFolder = store.getFolder(sourceName);
       if (sourceFolder == null || !sourceFolder.exists()) {
-        System.out.println("Folder bestaat niet: " + sourceName);
+        // System.out.println("Folder bestaat niet: " + sourceName);
         return 0;
       }
 

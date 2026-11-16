@@ -18,7 +18,8 @@ public class AccountMigrator {
   }
 
   // Bestaande methode voor template processing
-  public void generateAccountFile(String templatePath, String a_outputDirectory) throws Exception {
+  public void generateAccountFile(String templatePath, String a_templateName, String a_outputDirectory,
+      String a_OuputFile, boolean bSummaryOnly) throws Exception {
     // Lees accounts uit Excel (jouw bestaande code)
     Properties props = new Properties();
     outputDirectory = a_outputDirectory;
@@ -31,21 +32,34 @@ public class AccountMigrator {
     velocityEngine = new VelocityEngine(props);
     velocityEngine.init();
 
-    for (Account account : accounts) {
-      try {
-        generateIMAPFolderFile(account, velocityEngine);
-      } catch (Exception e) {
-        System.out.println("Exc" + e.getMessage());
-        e.printStackTrace();
+//    String outputPath = "";
+    String outputPath = outputDirectory + File.separator + a_OuputFile;
+
+    try (Writer writer = new FileWriter(outputPath)) {
+      // Template template = velocityEngine.getTemplate("imap-folder-tree.vm");
+      Template template = velocityEngine.getTemplate(a_templateName);
+
+      for (Account account : accounts) {
+        try {
+          VelocityContext context = new VelocityContext();
+          context = generateIMAPFolderFile(account, a_templateName, velocityEngine, bSummaryOnly);
+          template.merge(context, writer);
+        } catch (Exception e) {
+          System.out.println("Exc" + e.getMessage());
+          e.printStackTrace();
+        }
       }
+
     }
   }
 
   // NIEUWE methode: Haal IMAP folders op en genereer .secret bestand
-  private void generateIMAPFolderFile(Account account, VelocityEngine velocityEngine) throws Exception {
+  private VelocityContext generateIMAPFolderFile(Account account, String a_templateName, VelocityEngine velocityEngine,
+      boolean bSummaryOnly) throws Exception {
     System.out.println("Verwerken: " + account.getEmail());
 
     Store store = null;
+    VelocityContext context = new VelocityContext();
     try {
       store = MailStore.getMailStore(account);
       store.connect(account.getImapHost(), account.getEmail(), account.getPassword());
@@ -59,24 +73,25 @@ public class AccountMigrator {
       }
 
       // Velocity context voor template
-      VelocityContext context = new VelocityContext();
       context.put("account", account);
       context.put("folders", folders);
       context.put("timestamp", new Date());
+      if (!bSummaryOnly) {
+        // Genereer .tree bestand
+        Template template = velocityEngine.getTemplate(a_templateName);
+        String outputPath = outputDirectory + File.separator + account.getImapHost() + " " + account.getEmail()
+            + ".tree";
 
-      // Genereer .secret bestand
-      Template template = velocityEngine.getTemplate("imap-folder-tree.vm");
-      String outputPath = outputDirectory + File.separator + account.getImapHost() + " " + account.getEmail() + ".tree";
+        try (Writer writer = new FileWriter(outputPath)) {
+          template.merge(context, writer);
+        }
 
-      try (Writer writer = new FileWriter(outputPath)) {
-        template.merge(context, writer);
+        System.out.println("  -> " + outputPath + " gegenereerd");
       }
-
-      System.out.println("  -> " + outputPath + " gegenereerd");
-
     } finally {
       store.close();
     }
+    return context;
   }
 
   private void collectFolderInfo(Folder folder, List<FolderInfo> folders) throws MessagingException {

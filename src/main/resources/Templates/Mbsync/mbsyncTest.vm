@@ -18,8 +18,14 @@ IMAPStore $row.get("Subdir")-$row.get("Prefix")-remote
 Account $row.get("Subdir")-$row.get("Prefix")
 
 MaildirStore $row.get("Subdir")-$row.get("Prefix")-local
+#if($row.get("Prefix") == "")
+Path /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/
+Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir-Inbox/
+#end
+#if($row.get("Prefix") != "")
 Path /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/$row.get("Prefix")/
-Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/$row.get("Prefix")/INBOX
+Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir-Inbox/$row.get("Prefix")/
+#end
 AltMap yes
 SubFolders Verbatim
 
@@ -28,8 +34,7 @@ Channel $row.get("Subdir")-$row.get("Prefix")-inbox
   Far  :$row.get("Subdir")-$row.get("Prefix")-remote:INBOX
   Near :$row.get("Subdir")-$row.get("Prefix")-local:INBOX
   Create Near
-  Patterns *
-  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/$row.get("Prefix")/
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/#if($row.get("Prefix") != "")$row.get("Prefix")/#end
 
 # Channel for all other folders, except INBOX
 Channel $row.get("Subdir")-$row.get("Prefix")-sub
@@ -37,7 +42,7 @@ Channel $row.get("Subdir")-$row.get("Prefix")-sub
   Near :$row.get("Subdir")-$row.get("Prefix")-local:
   Create Near
   Patterns * !INBOX
-  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/$row.get("Prefix")/
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/#if($row.get("Prefix") != "")$row.get("Prefix")/#end
 
 #end
 #========== Groups ===================================
