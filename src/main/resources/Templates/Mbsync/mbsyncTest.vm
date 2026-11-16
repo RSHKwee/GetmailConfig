@@ -1,4 +1,9 @@
-# ========== (For Testing) Global Options ==========
+# ==============================================================
+# | mbsyncrc file for testing purpose
+# | No deleting external mails
+# | Date: ${timestamp}
+# +-------------------------------------------------------------
+# ========== Global Options for Testing ==========
 Create Both
 Expunge None
 Sync All  

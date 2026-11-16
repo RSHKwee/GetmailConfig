@@ -14,6 +14,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +29,8 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 
 import kwee.getmailconfig.main.CliRunner;
+import kwee.getmailconfig.main.GenerationListener;
+import kwee.getmailconfig.main.GenerationService;
 import kwee.getmailconfig.main.Main;
 import kwee.getmailconfig.main.UserSetting;
 import kwee.getmailconfig.library.MessageConstants;
@@ -337,81 +340,35 @@ public class GuiLayout extends Application {
     return new Task<>() {
       @Override
       protected String call() throws Exception {
-        updateMessage("🔄 Start generatie...");
-        LOGGER.log(Level.INFO, "Start generatie...");
-        updateProgress(0, 1);
+        GenerationListener listener = new GenerationListener() {
+          @Override
+          public void status(String message) {
+            updateMessage(message);
+          }
 
-        File templateBaseDir = m_templateFile.getParentFile();
-        LOGGER.log(Level.FINE,
-            "Template basis directory: "
-                + (templateBaseDir != null ? templateBaseDir.getAbsolutePath()
-                    : "?"));
+          @Override
+          public void progress(long done, long total) {
+            if (total <= 0) {
+              updateProgress(ProgressBar.INDETERMINATE_PROGRESS, 1);
+            } else {
+              updateProgress(done, total);
+            }
+          }
 
-        // Velocity engine met FileResourceLoader
-        VelocityEngine ve = new VelocityEngine();
-        ve.setProperty(RuntimeConstants.RESOURCE_LOADERS, "file");
-        ve.setProperty("file.resource.loader.path",
-            templateBaseDir != null ? templateBaseDir.getAbsolutePath() : ".");
-        ve.setProperty("file.resource.loader.cache", "false");
-        ve.setProperty(RuntimeConstants.INPUT_ENCODING, "UTF-8");
-        ve.init();
+          @Override
+          public boolean isCancelled() {
+            return GuiLayout.this.currentTask != null
+                && GuiLayout.this.currentTask.isCancelled();
+          }
 
-        String templateName = m_templateFile.getName();
-        Template template = ve.getTemplate(templateName, "UTF-8");
-        LOGGER.log(Level.INFO, "Template geladen: " + templateName);
+          @Override
+          public void log(String message) {
+            LOGGER.log(Level.INFO, message);
+          }
+        };
 
-        if (isCancelled()) {
-          return null;
-        }
-
-        // ---- Excel inlezen via gedeelde CliRunner.readExcel(...) ----
-        updateMessage("📊 Excel inlezen...");
-        LOGGER.log(Level.FINE,
-            "Excel inlezen: " + m_excelFile.getAbsolutePath());
-
-        // Onbepaalde voortgang tijdens het lezen (geen per-rij callback).
-        updateProgress(ProgressBar.INDETERMINATE_PROGRESS, 1);
-
-        List<Map<String, String>> excelData = CliRunner.readExcel(m_excelFile);
-
-        if (isCancelled()) {
-          return null;
-        }
-
-        updateProgress(1, 1);
-        updateMessage("📊 " + excelData.size() + " rijen gelezen");
-        LOGGER.log(Level.INFO, excelData.size() + " rijen gelezen");
-
-        // Context vullen
-        VelocityContext context = new VelocityContext();
-        context.put("rows", excelData);
-        context.put("rowCount", excelData.size());
-        if (!excelData.isEmpty()) {
-          context.put("headers", excelData.get(0).keySet());
-        }
-
-        // Genereer output
-        updateMessage("⚙️ Template samenvoegen...");
-        LOGGER.log(Level.FINE, "Template samenvoegen...");
-        StringWriter writer = new StringWriter();
-        template.merge(context, writer);
-        String finalOutput = writer.toString();
-
-        if (isCancelled()) {
-          return null;
-        }
-
-        // Opslaan
-        updateMessage("💾 Opslaan...");
-        LOGGER.log(Level.INFO, "Opslaan naar: " + outputFile.getAbsolutePath());
-        try (FileOutputStream fos = new FileOutputStream(outputFile)) {
-          fos.write(finalOutput.getBytes(StandardCharsets.UTF_8));
-        }
-
-        updateMessage("✅ Klaar.");
-        LOGGER.log(Level.INFO, "Opgeslagen: " + outputFile.getAbsolutePath());
-        updateProgress(1, 1);
-        return finalOutput;
+        return GenerationService.generate(m_templateFile, m_excelFile,
+            outputFile, listener);
       }
     };
   }
