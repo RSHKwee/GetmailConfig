@@ -1,0 +1,29 @@
+ Options
+set maximum-size 50M
+set delete-oversized
+
+# Actie: Virus scanning with ClamAV
+action "clamav_scan" pipe "/usr/bin/clamdscan --stdout --no-summary --config-file=/etc/clamav/clamd.conf -"
+
+# Actie: Spam scanning with SpamAssassin
+action "spamassassin_scan" pipe "/usr/bin/spamc"
+
+# Actie: Deliver to Dovecot LDA
+action "deliver_via_dovecot" exec "/usr/local/bin/dovecot-lda-wrapper %a"
+
+### ACCOUNT: corianne ###
+account "corianne" maildir "/home/mail/vhosts/kwee.cumail.nl/corianne/Maildir/Gmail/INBOX" {
+   # Deze actie geldt voor alle berichten in dit account
+   match all action "deliver_via_dovecot"
+}
+
+### ACCOUNT: rene ###
+account "rene" maildir "/pad/naar/jouw/dovecot/vhosts/kwee.cumail.nl/rene/Maildir/Gmail/INBOX" {
+   match all action "deliver_via_dovecot"
+}
+
+### ACCOUNT: wilma ###
+# (Herhaal voor elke gebruiker en elke gewenste externe account, zoals HCC, Yahoo, etc.)
+account "wilma" maildir "/pad/naar/jouw/dovecot/vhosts/kwee.cumail.nl/wilma/Maildir/Gmail/INBOX" {
+   match all action "deliver_via_dovecot"
+}

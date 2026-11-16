@@ -1,0 +1,19 @@
+#!/bin/bash
+# +=============================================================
+# |    Set ACL for Folders File
+# |    Generated for: ${account.email}
+# |    Date: ${timestamp}
+# +-------------------------------------------------------------
+#foreach( $folder in $folderList )
+# sudo doveadm acl set -u ${account.email} "${folder.fullName}" rene@kwee.cumail.nl lookup read write write-seen write-deleted insert post expunge create delete admin
+#end
+
+#macro( displayHierarchy $folderList $prefix )
+#foreach( $folder in $folderList )
+sudo doveadm acl set -u ${account.destination} '${account.provider}/${prefix}${folder.fullName}' user=rene@kwee.cumail.nl lookup read write write-seen write-deleted insert post expunge create delete admin
+#if( $folder.hasSubfolders )
+#displayHierarchy( $folder.subfolders "${prefix}  " )
+#end
+#end
+#end
+#displayHierarchy( $folders, "" )

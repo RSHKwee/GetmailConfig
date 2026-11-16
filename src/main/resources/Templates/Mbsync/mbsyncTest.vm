@@ -1,0 +1,61 @@
+# ========== (For Testing) Global Options ==========
+Create Both
+Expunge None
+Sync All  
+CopyArrivalDate yes
+
+#foreach($row in $rows)
+#if($foreach.index == 0) #end
+#========== $row.get("Subdir")-$row.get("Prefix") ============================
+IMAPAccount $row.get("Subdir")-$row.get("Prefix")
+Host $row.get("RetrieverServer")
+User $row.get("RetrieverUser")
+PassCmd "cat /home/mail/secrets/$row.get("Subdir")-$row.get("Prefix")"
+SSLType   $row.get("SSL")
+AuthMechs LOGIN 
+
+IMAPStore $row.get("Subdir")-$row.get("Prefix")-remote
+Account $row.get("Subdir")-$row.get("Prefix")
+
+MaildirStore $row.get("Subdir")-$row.get("Prefix")-local
+#if($row.get("Prefix") == "")
+Path /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/
+Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir-Inbox/
+#end
+#if($row.get("Prefix") != "")
+Path /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir/$row.get("Prefix")/
+Inbox /home/mail/vhosts/kwee.cumail.nl/$row.get("Subdir")/Maildir-Inbox/$row.get("Prefix")/
+#end
+AltMap yes
+SubFolders Verbatim
+
+# Channel for INBOX alone
+Channel $row.get("Subdir")-$row.get("Prefix")-inbox
+  Far  :$row.get("Subdir")-$row.get("Prefix")-remote:INBOX
+  Near :$row.get("Subdir")-$row.get("Prefix")-local:INBOX
+  Create Near
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/#if($row.get("Prefix") != "")$row.get("Prefix")/#end
+
+# Channel for all other folders, except INBOX
+Channel $row.get("Subdir")-$row.get("Prefix")-sub
+  Far  :$row.get("Subdir")-$row.get("Prefix")-remote:
+  Near :$row.get("Subdir")-$row.get("Prefix")-local:
+  Create Near
+  Patterns * !INBOX
+  SyncState /home/mail/.mbsync-state/$row.get("Subdir")/#if($row.get("Prefix") != "")$row.get("Prefix")/#end
+
+#end
+#========== Groups ===================================
+#set($currentSubdir = "")
+#foreach($row in $rows)
+  #if($row.get("Subdir") != $currentSubdir)
+    #if($foreach.index > 0)
+
+    #end
+    #set($currentSubdir = $row.get("Subdir"))
+#========== $row.get("Subdir") ============================
+Group $row.get("Subdir")
+  #end
+  Channel $row.get("Subdir")-$row.get("Prefix")-inbox
+  Channel $row.get("Subdir")-$row.get("Prefix")-sub
+#end

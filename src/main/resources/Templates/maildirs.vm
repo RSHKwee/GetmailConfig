@@ -1,0 +1,3 @@
+# ${Subdir} ${Prefix}
+sudo -u vmail mkdir -p /home/mail/vhosts/kwee.cumail.nl/${Subdir}/${Prefix}
+sudo -u vmail mkdir -p /home/mail/vhosts/kwee.cumail.nl/${Subdir}/${Prefix}/{cur,new,tmp}

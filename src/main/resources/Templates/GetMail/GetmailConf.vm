@@ -1,0 +1,38 @@
+[retriever]
+type = ${RetrieverType} 
+server = ${RetrieverServer} 
+username = ${RetrieverUser} 
+password = ${RetrieverPassword} 
+port = ${RetrieverPort}  
+mailboxes = ${MailBoxs}
+
+[destination]
+type = MDA_lmtp
+host = 127.0.0.1
+port = 24
+override = ${DestinationAdress}
+
+[options]
+delete = false
+read_all = ${ReadAll}
+received = false
+delivered_to = true
+add_header = true
+
+max_messages_per_session = ${NrMails}
+max_message_size = 0
+
+# ============================================
+# Add Spamassassin ClamAV Filters
+# ============================================
+# ClamAV
+[filter-1]
+type = Filter_external
+path = /usr/local/bin/clamdscan-wrapper
+arguments = ()
+
+# Spamassassin
+[filter-2]
+type = Filter_external
+path = /usr/bin/spamc
+arguments = ("-s", "10000")

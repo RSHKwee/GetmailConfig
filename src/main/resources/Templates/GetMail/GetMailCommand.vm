@@ -1,0 +1,4 @@
+sudo -u ${Subdir} getmail \
+        --rcfile /etc/getmail/${Subdir}/${Prefix}.conf \
+        --getmaildir /var/lib/getmail/${Subdir}
+		
