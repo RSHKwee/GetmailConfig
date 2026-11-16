@@ -1,0 +1,25 @@
+
+#========== ${Subdir}-${Prefix} ============================
+IMAPAccount ${Subdir}-${Prefix}
+Host ${RetrieverServer}
+User ${RetrieverUser}
+PassCmd "cat /home/mail/secrets/${Subdir}-${Prefix}"
+SSLType   ${SSL}
+AuthMechs LOGIN 
+
+IMAPStore ${Subdir}-${Prefix}-remote
+Account ${Subdir}-${Prefix}
+
+MaildirStore ${Subdir}-${Prefix}-local
+Path /home/mail/vhosts/kwee.cumail.nl/${Subdir}/Maildir/${Prefix}/
+Inbox /home/mail/vhosts/kwee.cumail.nl/${Subdir}/Maildir/${Prefix}
+AltMap yes
+SubFolders Verbatim
+
+Channel ${Subdir}-${Prefix}
+  Far :${Subdir}-${Prefix}-remote:
+  Near  :${Subdir}-${Prefix}-local:
+  Create Both
+  Patterns *
+  SyncState /home/mail/.mbsync-state/${Subdir}/${Prefix}/
+

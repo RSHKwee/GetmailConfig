@@ -1,0 +1,23 @@
+# /var/mail/.mbsyncrc
+
+IMAPAccount user1-ext1
+Host imap.provider1.com
+User user1@provider1.com
+PassCmd "cat /home/mail/secrets/user1-1"
+SSLType IMAPS
+
+IMAPStore user1-ext1-remote
+Account user1-ext1
+
+MaildirStore user1-local
+Path /home/mail/vhosts/kwee.cumail.nl/user1/
+Inbox /home/mail/vhosts/kwee.cumail.nl/user1/INBOX
+
+Channel user1-ext1
+Master :user1-ext1-remote:
+Slave  :user1-local:
+Create Both
+Patterns *
+Sync All
+Expunge Both
+Remove Both
