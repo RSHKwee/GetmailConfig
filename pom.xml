@@ -2,63 +2,357 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>kwee</groupId>
   <artifactId>getmailconfig</artifactId>
-  <version>0.0.0.1</version>
-  <packaging>jar</packaging>
+  <version>${revision}</version>
   <name>getmailconfig</name>
-
+  <description>Getmail configuration tool</description>
+  <packaging>jar</packaging>
+  <groupId>kwee</groupId>
+ 
   <parent>
 	<groupId>kwee</groupId>
 	<artifactId>aggregator</artifactId>
-	<version>1.1.0.3</version>
+	<version>${revision}</version>
 	<relativePath>..\\pom.xml</relativePath>
   </parent>
-  
-  <properties>
-    <project.description>Getmail configuration tool</project.description>
-    <javamail.version>1.6.2</javamail.version>
-  </properties>
-  
-<dependencies>
+
+  <dependencies>
     <dependency>
 	  <groupId>kwee</groupId>
 	  <artifactId>library</artifactId>
-	  <version>${kweeLibrary.version}</version>
+	  <version>${revision}</version>
     </dependency>    
     <dependency>          <!-- Apache POI voor Excel -->
-        <groupId>org.apache.poi</groupId>
-        <artifactId>poi</artifactId>
-        <version>5.2.5</version>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>${org-apache-poi-poi.version}</version>
     </dependency>
     <dependency>
-        <groupId>org.apache.poi</groupId>
-        <artifactId>poi-ooxml</artifactId>
-        <version>5.2.5</version>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>${org-apache-poi-ooxml.version}</version>
     </dependency>
     
     <!-- JavaMail (IMAP) -->
-    <!--
-    <dependency>
-      <groupId>com.sun.mail</groupId>
-      <artifactId>javax.mail</artifactId>
-      <version>${javamail.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    -->
     <dependency>
       <groupId>com.sun.mail</groupId>
       <artifactId>jakarta.mail</artifactId>
-      <version>2.0.1</version>
+      <version>${jakarta-mail.version}</version>
     </dependency>
 
     <!-- Apache Velocity voor templating -->
     <dependency>
-        <groupId>org.apache.velocity</groupId>
-        <artifactId>velocity-engine-core</artifactId>
-        <version>2.3</version>
+      <groupId>org.apache.velocity</groupId>
+      <artifactId>velocity-engine-core</artifactId>
+      <version>${org.apache.velocity.velocity-engine-core}</version>
     </dependency>
-</dependencies>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+      </resource>
+    </resources>   
+
+    <plugins>
+      <!-- Distribute tools v -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${maven-resources-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>CopyToolsIng2</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.basedir}</outputDirectory>
+              <resources>                                        
+                <resource>
+                  <directory>..\BuildTools</directory>
+                  <includes>
+                    <include>Library.iss</include>
+                  </includes>
+                  <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>..\BuildTools</directory>
+                  <includes>
+                    <include>keystore.jks</include>
+                  </includes>
+                  <filtering>false</filtering>
+                </resource>
+			  </resources>
+              <encoding>${project.build.sourceEncoding}</encoding>
+            </configuration>
+          </execution> 
+        </executions>
+      </plugin>		
+	  <!-- jks ^ -->		  
+	
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>${maven-versions-maven-plugin.version}</version>
+        <configuration>
+          <ruleSet>
+            <ignoreVersions>
+              <!-- Negeer alle SNAPSHOT-versies -->
+              <ignoreVersion>
+                <type>regex</type>
+                <version>(.+-SNAPSHOT|.+-M\d)</version>
+              </ignoreVersion>
+              <ignoreVersion>
+                <type>regex</type>
+                <version>.*-M\d*</version>
+              </ignoreVersion>
+              <!-- Negeer alpha- en beta-versies -->
+              <ignoreVersion>
+                <type>regex</type>
+                <version>.*[-_\.](alpha|beta|rc|m)[-_\.]?\d*</version>
+              </ignoreVersion>
+            </ignoreVersions>
+          </ruleSet>
+        </configuration>
+      </plugin>
+
+      <!-- VERVANGEN: maven-assembly-plugin -> maven-shade-plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${org-apache-maven-shade-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <finalName>getmailcnf</finalName>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>kwee.getmailconfig.main.Main</mainClass>
+                </transformer>
+                <!-- CRUCIAAL voor Apache POI: voegt META-INF/services samen -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>${maven-clean-plugin.version}</version>
+        <configuration>
+            <force>true</force>
+        </configuration>
+      </plugin>
+
+      <!-- Library -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${maven-enforcer-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>enforce-maven-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>${maven.min.version}</version> <!-- Minimale Maven-versie vereist -->
+                </requireMavenVersion>
+              </rules>
+              <fail>false</fail> <!-- Niet Stoppen de build bij niet-naleving -->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>${maven-site-plugin.version}</version>
+        <configuration></configuration>
+        <executions>
+          <execution>
+            <id>attach-site</id>
+            <goals>
+              <goal>site</goal>
+            </goals>
+            <phase>post-integration-test</phase>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+          <testFailureIgnore>true</testFailureIgnore>
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>${codehaus-mojo.maven-plugin.version}</version>
+        <configuration>
+          <updatePomFile>true</updatePomFile>
+          <flattenMode>resolveCiFriendliesOnly</flattenMode>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- LAUNCH4J create executable v -->
+      <plugin>
+         <groupId>com.akathist.maven.plugins.launch4j</groupId>
+         <artifactId>launch4j-maven-plugin</artifactId>
+         <version>${launch4j-maven-plugin.version}</version>
+         <executions>
+           <execution>
+             <id>l4j-clui</id>
+             <phase>package</phase>
+             <goals>
+               <goal>launch4j</goal>
+             </goals>
+             <configuration>
+               <headerType>console</headerType>
+               <!-- AANGEPAST: shade produceert getmailcnf.jar -->
+               <jar>${project.build.directory}/getmailcnf.jar</jar>
+               <outfile>${project.build.directory}/getmailcnf.exe</outfile>
+               <downloadUrl>${downloadUrl.jre}</downloadUrl>
+               <classPath>
+                 <mainClass>kwee.getmailconfig.main.Main</mainClass>
+              </classPath>
+              <jre>
+                <path>%java_home%</path>
+              </jre>
+              <!-- <icon>src/main/resources/ingSNSLogo.ico</icon> -->
+              <versionInfo>
+                <fileVersion>${project.version}</fileVersion>
+                <txtFileVersion>${project.version}</txtFileVersion>
+                <fileDescription>${project.name}</fileDescription>
+                <copyright>C</copyright>
+                <productVersion>${project.version}</productVersion>
+                <txtProductVersion>${project.version}</txtProductVersion>
+                <productName>${project.name}</productName>
+                <internalName>getmailconfig</internalName>
+                <originalFilename>getmailconfig.exe</originalFilename>
+                <companyName>${companyName}</companyName>
+              </versionInfo>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- LAUNCH4J ^ -->
+
+      <!-- Sign executable v -->
+      <plugin>
+        <groupId>net.jsign</groupId>
+        <artifactId>jsign-maven-plugin</artifactId>
+        <version>${jsign-maven-plugin.version}</version>
+        <executions>
+          <execution>
+           <id>sign_exe</id>
+           <phase>package</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+            <configuration>
+              <file>${project.build.directory}/getmailcnf.exe</file>
+              <name>ING OFX Converter</name>
+              <url>https://github.com/RSHKwee/ing2ofx</url>
+              <keystore>keystore.jks</keystore>
+              <alias>RSHK</alias>
+              <storepass>${keystore.password}</storepass>
+            </configuration>
+          </execution>
+          <!--
+          <execution>
+            <id>sign_inst</id>
+            <phase>install</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+            <configuration>
+              <file>${project.build.directory}/ing2ofx_v${project.version}_setup.exe</file>
+              <name>ING OFX Converter</name>
+              <url>https://github.com/RSHKwee/ing2ofx</url>
+              <keystore>keystore.jks</keystore>
+              <alias>RSHK</alias>
+              <storepass>${keystore.password}</storepass>
+            </configuration>
+          </execution>
+          -->
+        </executions>
+      </plugin>
+	  
+      <!-- Opruimen -->
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>${maven-antrun-pluginversion}</version>
+        <executions>
+          <execution>
+            <phase>install</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+              <configuration>
+                <target> 
+                  <delete file="${project.basedir}\keystore.jks"/>   
+                </target>
+              </configuration>
+           </execution>
+        </executions>
+      </plugin>
+    </plugins>
+    <!--   <directory>f:/temp/local_target/${project.artifactId}</directory>   -->
+  </build>
 
   <distributionManagement>
     <!-- Upload to Github v-->
