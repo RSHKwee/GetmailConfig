@@ -1,8 +1,7 @@
-package zandbak;
+package kwee.getmailconfig.main;
 
 import java.io.File;
 
-import kwee.getmailconfig.main.UserSetting;
 import kwee.getmailconfig.library.AccountMigrator;
 import kwee.getmailconfig.library.ExcelTemplateGenerator;
 import kwee.getmailconfig.library.MailCheckAndClean;
@@ -15,31 +14,34 @@ public class MainCmd {
    * Main methode met voorbeeld
    */
   public static void main(String[] args) {
-    // String rootdir = "./src/main/resources";
-    String rootdir = String.join(File.separator, ".", "src", "main",
-        "resources");
+    // String rootdir = "./src/main/resources"; D:\Dev\LocalGit\GetmailConfig
+    String rootdir = String.join(File.separator, "D:", "Dev", "LocalGit",
+        "GetmailConfig");
     String templDir = rootdir + File.separator + "templates";
     String dataDir = rootdir + File.separator + "data" + File.separator;
+    String outputDirectory = rootdir + File.separator
+        + String.join(File.separator, ".", "output");
 
     String dataXlsx = "GetmailData.xlsx";
     String templateNaam = "mbsyncPassw.vm";
 
     boolean b_accountConfig = false;
     boolean b_aclConfig = false;
-    boolean b_pwdConfig = false;
-    boolean b_mbsyncConfig = true;
-    boolean b_mbsyncTestConfig = true;
+    boolean b_pwdConfig = true;
     boolean b_mailDirs = false;
-    boolean b_sslPwdConfig = false;
-    boolean b_senderRelayConfig = false;
     boolean b_mailMover = false;
     boolean b_mailCheck = false;
+
+    // Obsolete
+    boolean b_mbsyncConfig = false;
+    boolean b_mbsyncTestConfig = false;
+    boolean b_sslPwdConfig = false;
+    boolean b_senderRelayConfig = false;
 
     try {
       // Voorbeeld parameters
       String excelPad = dataDir + dataXlsx;
-      String outputDirectory = String.join(File.separator, ".", "target",
-          "output");
+
       String outputPrefix = "document";
       if (b_accountConfig) {
         AccountMigrator accountmig = new AccountMigrator(excelPad);
