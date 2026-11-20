@@ -64,25 +64,6 @@ public final class GenerationService {
     listener.progress(0, 1);
     checkCancelled(listener);
 
-    // ---- Template laden ----
-    File templateBaseDir = templateFile.getParentFile();
-    listener.log("Template basis directory: "
-        + (templateBaseDir != null ? templateBaseDir.getAbsolutePath() : "?"));
-
-    VelocityEngine ve = new VelocityEngine();
-    ve.setProperty(RuntimeConstants.RESOURCE_LOADERS, "file");
-    ve.setProperty("resource.loader.file.path",
-        templateBaseDir != null ? templateBaseDir.getAbsolutePath() : ".");
-    ve.setProperty("resource.loader.file.cache", "false");
-    ve.setProperty(RuntimeConstants.INPUT_ENCODING, "UTF-8");
-
-    ve.init();
-
-    String templateName = templateFile.getName();
-    Template template = ve.getTemplate(templateName, "UTF-8");
-    listener.log("Template geladen: " + templateName);
-    checkCancelled(listener);
-
     // ---- Excel lezen ----
     listener.status("📊 Excel inlezen...");
     listener.progress(-1, 1); // onbepaald
@@ -90,7 +71,11 @@ public final class GenerationService {
     listener.progress(1, 1);
     listener.status("📊 " + excelData.size() + " rijen gelezen");
     listener.log(excelData.size() + " rijen gelezen");
-    checkCancelled(listener);
+
+    // ---- Template laden ----
+    File templateBaseDir = templateFile.getParentFile();
+    listener.log("Template basis directory: "
+        + (templateBaseDir != null ? templateBaseDir.getAbsolutePath() : "?"));
 
     // ---- Context vullen ----
     VelocityContext context = new VelocityContext();
@@ -100,6 +85,21 @@ public final class GenerationService {
     if (!excelData.isEmpty()) {
       context.put("headers", excelData.get(0).keySet());
     }
+
+    // Velocity & Templater
+    checkCancelled(listener);
+    VelocityEngine ve = new VelocityEngine();
+    ve.setProperty(RuntimeConstants.RESOURCE_LOADERS, "file");
+    ve.setProperty("resource.loader.file.path",
+        templateBaseDir != null ? templateBaseDir.getAbsolutePath() : ".");
+    ve.setProperty("resource.loader.file.cache", "false");
+    ve.setProperty(RuntimeConstants.INPUT_ENCODING, "UTF-8");
+    ve.init();
+
+    String templateName = templateFile.getName();
+    Template template = ve.getTemplate(templateName, "UTF-8");
+    listener.log("Template geladen: " + templateName);
+    checkCancelled(listener);
 
     // ---- Mergen ----
     listener.status("⚙️ Template samenvoegen...");
@@ -124,6 +124,217 @@ public final class GenerationService {
     listener.log("Opgeslagen: " + outputFile.getAbsolutePath());
     listener.progress(1, 1);
     return finalOutput;
+  }
+
+  // ------------------------------------------------------------------
+  // Per-row generatie
+  // ------------------------------------------------------------------
+  /** Configuratie voor per-rij bestandsgeneratie. */
+  public static final class PerRowOptions {
+    /** Kolom met submap (relatief t.o.v. outputRoot). Mag null/leeg zijn. */
+    public String subdirColumn = "Subdir";
+    /** Kolom met prefix. */
+    public String prefixColumn = "Prefix";
+    /** Kolom met extensie (zonder punt). */
+    public String extColumn = "Ext";
+    /** Fallback-extensie als Ext-kolom leeg is (zonder punt). */
+    public String defaultExt = "txt";
+    /** Basis-map waarnaar alle bestanden worden geschreven. */
+    public File outputRoot;
+    /** Naam van de variabele in de Velocity-context voor de rij-map. */
+    public String rowVarName = "row";
+    /** Voeg ook 1-based rownummer toe aan de context (variabele "rownr"). */
+    public boolean exposeRowNumber = true;
+    /** Vervang ongeldige bestandsnaam-tekens door '_'. */
+    public boolean sanitizeFilenames = true;
+    /** Empty extension ("", empty string) allowed. */
+    public boolean allowEmptyExtension = true;
+
+    public PerRowOptions(File outputRoot) {
+      this.outputRoot = outputRoot;
+    }
+  }
+
+  /**
+   * Genereert per Excel-rij een apart bestand.
+   *
+   * <p>
+   * Bestandsnaam: {@code <Subdir>/<Prefix>_<rownr>.<Ext>} waarbij de kolomnamen
+   * configureerbaar zijn via {@link PerRowOptions}. Lege subdir betekent direct
+   * in outputRoot.
+   * </p>
+   *
+   * @param templateFile Velocity-template
+   * @param excelFile    Excel-bron
+   * @param opts         configuratie
+   * @param listener     voortgangs-callback (mag null zijn)
+   * @return lijst van geschreven bestanden (in volgorde van de rijen)
+   */
+  public static List<File> generatePerRow(File templateFile, File excelFile,
+      PerRowOptions opts, GenerationListener listener)
+      throws IOException, CancelledException {
+
+    if (listener == null) {
+      listener = GenerationListener.NONE;
+    }
+    if (opts == null || opts.outputRoot == null) {
+      throw new IllegalArgumentException(
+          "PerRowOptions.outputRoot is verplicht");
+    }
+
+    listener.status("🔄 Start per-rij generatie...");
+    listener.progress(0, 1);
+    checkCancelled(listener);
+
+    // ---- Excel lezen (hergebruik bestaande code) ----
+    listener.status("📊 Excel inlezen...");
+    listener.progress(-1, 1);
+    List<Map<String, String>> rows = readExcel(excelFile, listener);
+    listener.status("📊 " + rows.size() + " rijen gelezen");
+    listener.log(rows.size() + " rijen gelezen");
+
+    // ---- Template engine opzetten ----
+    File templateBaseDir = templateFile.getParentFile();
+    VelocityEngine ve = new VelocityEngine();
+    ve.setProperty(RuntimeConstants.RESOURCE_LOADERS, "file");
+    ve.setProperty("resource.loader.file.path",
+        templateBaseDir != null ? templateBaseDir.getAbsolutePath() : ".");
+    ve.setProperty("resource.loader.file.cache", "false");
+    ve.setProperty(RuntimeConstants.INPUT_ENCODING, "UTF-8");
+    ve.init();
+
+    Template template = ve.getTemplate(templateFile.getName(), "UTF-8");
+    listener.log("Template geladen: " + templateFile.getName());
+
+    // ---- Output-root aanmaken ----
+    if (!opts.outputRoot.exists() && !opts.outputRoot.mkdirs()) {
+      throw new IOException("Kon output-map niet aanmaken: " + opts.outputRoot);
+    }
+
+    List<File> written = new ArrayList<>();
+    int total = Math.max(1, rows.size());
+    int done = 0;
+
+    for (Map<String, String> row : rows) {
+      checkCancelled(listener);
+
+      // 1-based rownummer, zodat rij 1 in Excel ook "_1" wordt
+      int rownr = done + 1;
+
+      // ---- Bestandsnaam opbouwen ----
+      String subdir = value(row, opts.subdirColumn);
+      String prefix = value(row, opts.prefixColumn);
+      String ext = value(row, opts.extColumn);
+      if (opts.allowEmptyExtension) {
+        if (ext == null) {
+          ext = opts.defaultExt;
+        }
+      } else if (ext == null || ext.isEmpty()) {
+        ext = opts.defaultExt;
+      }
+      ext = ext.replaceFirst("^\\.", ""); // ".txt" -> "txt"
+
+      String baseName;
+      if (opts.exposeRowNumber) {
+        baseName = (prefix.isBlank() ? "row" : prefix) + "_" + rownr;
+      } else {
+        baseName = (prefix.isBlank() ? "row" : prefix);
+      }
+      if (opts.sanitizeFilenames) {
+        baseName = sanitizeFilename(baseName);
+        if (!opts.allowEmptyExtension) {
+          ext = sanitizeFilename(ext);
+        }
+        subdir = subdir == null ? "" : subdir; // paden niet strippen, wel per
+                                               // segment
+      }
+
+      // Subdir veilig opschonen: elk segment saneren
+      File targetDir = opts.outputRoot;
+      if (subdir != null && !subdir.isBlank()) {
+        for (String segment : subdir.replace('\\', '/').split("/")) {
+          if (segment.isBlank()) {
+            continue;
+          }
+          targetDir = new File(targetDir,
+              opts.sanitizeFilenames ? sanitizeFilename(segment) : segment);
+        }
+      }
+      if (!targetDir.exists() && !targetDir.mkdirs()) {
+        throw new IOException("Kon submap niet aanmaken: " + targetDir);
+      }
+
+      File outputFile = new File(targetDir, baseName + "." + ext);
+      if (outputFile.exists()) {
+        baseName = baseName + "_" + rownr;
+        outputFile = new File(targetDir, baseName + "." + ext);
+      }
+
+      // ---- Context vullen ----
+      VelocityContext context = new VelocityContext();
+      context.put(opts.rowVarName, row);
+      // Gemaksvelden, ook handig in templates:
+      context.put("rows", rows);
+      context.put("rowCount", rows.size());
+      context.put("timestamp", new Date());
+      if (opts.exposeRowNumber) {
+        context.put("rownr", rownr);
+      }
+      if (!rows.isEmpty()) {
+        context.put("headers", rows.get(0).keySet());
+      }
+
+      // ---- Mergen ----
+      listener
+          .status("⚙️ Rij " + rownr + " / " + rows.size() + " samenvoegen...");
+      StringWriter writer = new StringWriter();
+      template.merge(context, writer);
+      String finalOutput = writer.toString();
+      checkCancelled(listener);
+
+      // ---- Schrijven ----
+      try (FileOutputStream fos = new FileOutputStream(outputFile)) {
+        fos.write(finalOutput.getBytes(StandardCharsets.UTF_8));
+      }
+      written.add(outputFile);
+      listener.log("Geschreven: " + outputFile.getAbsolutePath());
+
+      done++;
+      listener.progress(done, total);
+    }
+
+    listener.status("✅ Klaar: " + written.size() + " bestand(en) geschreven.");
+    listener.progress(1, 1);
+    return written;
+  }
+
+//------------------------------------------------------------------
+//Helpers
+//------------------------------------------------------------------
+
+  /** Veilige lookup: null-safe, trimt waarden. */
+  private static String value(Map<String, String> row, String column) {
+    if (column == null || column.isBlank()) {
+      return "";
+    }
+    String v = row.get(column);
+    return v == null ? "" : v.trim();
+  }
+
+  /**
+   * Maakt een string veilig als bestandsnaam-segment. Verwijdert/vervangt
+   * tekens die op Windows/macOS problematisch zijn.
+   */
+  public static String sanitizeFilename(String name) {
+    if (name == null) {
+      return "";
+    }
+    // Vervang ongeldige tekens door '_'
+    String cleaned = name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+    // Windows: geen punt of spatie aan het eind
+    cleaned = cleaned.replaceAll("[. ]+$", "");
+    // Lege naam voorkomen
+    return cleaned.isEmpty() ? "unnamed" : cleaned;
   }
 
   // ------------------------------------------------------------------

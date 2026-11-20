@@ -1,11 +1,13 @@
 package kwee.getmailconfig.main;
 
 import java.io.File;
+import java.util.List;
 
 import kwee.getmailconfig.library.AccountMigrator;
 import kwee.getmailconfig.library.ExcelTemplateGenerator;
 import kwee.getmailconfig.library.MailCheckAndClean;
 import kwee.getmailconfig.library.MailMover;
+import kwee.getmailconfig.main.GenerationService.PerRowOptions;
 
 public class MainCmd {
   public static UserSetting m_param = new UserSetting();
@@ -54,15 +56,21 @@ public class MainCmd {
             outputDirectory, "doveAdmAcl.sh", true);
       }
       if (b_pwdConfig) {
-        // Roep de methode aan
-        // Gebruik de constructor met template pad
-        templDir = rootdir + File.separator + "templates" + File.separator
-            + "Mbsync";
-        templateNaam = "mbsyncPassw.vm";
+        PerRowOptions opts = new PerRowOptions(new File(outputDirectory));
+        opts.subdirColumn = "Subdir";
+        opts.prefixColumn = "Prefix";
+        opts.extColumn = "NoExtensie";
+        opts.defaultExt = "html";
+        opts.allowEmptyExtension = true;
+        opts.exposeRowNumber = false;
 
-        ExcelTemplateGenerator generator = new ExcelTemplateGenerator(templDir);
-        generator.genereerBestanden(excelPad, templateNaam, outputDirectory,
-            outputPrefix, false);
+        templDir = rootdir + File.separator + "templates" + File.separator
+            + "Mbsync" + File.separator + "mbsyncPassw.vm";
+
+        List<File> files = GenerationService.generatePerRow(new File(templDir),
+            new File(excelPad), opts, null);
+
+        System.out.println(files);
       }
       if (b_mbsyncConfig) {
         // Gebruik de constructor met template pad
