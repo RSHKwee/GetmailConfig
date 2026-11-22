@@ -3,6 +3,8 @@ package kwee.getmailconfig.main;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import kwee.getmailconfig.gui.GenerationListener;
+import kwee.getmailconfig.gui.GenerationService;
 import kwee.logger.MyLogger;
 
 /**

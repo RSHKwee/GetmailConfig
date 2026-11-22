@@ -1,4 +1,4 @@
-package kwee.getmailconfig.main;
+package kwee.getmailconfig.gui;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,6 +11,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -23,6 +25,8 @@ import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 
+import kwee.logger.MyLogger;
+
 /**
  * Gedeelde generatie-logica voor CLI en GUI.
  *
@@ -32,6 +36,7 @@ import org.apache.velocity.runtime.RuntimeConstants;
  * </p>
  */
 public final class GenerationService {
+  private static final Logger LOGGER = MyLogger.getLogger();
 
   /** Wordt gegooid als de listener aangeeft dat er geannuleerd is. */
   public static class CancelledException extends Exception {
@@ -60,6 +65,7 @@ public final class GenerationService {
       listener = GenerationListener.NONE;
     }
 
+    LOGGER.log(Level.INFO, "🔄 Start generatie...");
     listener.status("🔄 Start generatie...");
     listener.progress(0, 1);
     checkCancelled(listener);
@@ -70,7 +76,7 @@ public final class GenerationService {
     List<Map<String, String>> excelData = readExcel(excelFile, listener);
     listener.progress(1, 1);
     listener.status("📊 " + excelData.size() + " rijen gelezen");
-    listener.log(excelData.size() + " rijen gelezen");
+    LOGGER.log(Level.INFO, excelData.size() + " rijen gelezen");
 
     // ---- Template laden ----
     File templateBaseDir = templateFile.getParentFile();
@@ -98,12 +104,12 @@ public final class GenerationService {
 
     String templateName = templateFile.getName();
     Template template = ve.getTemplate(templateName, "UTF-8");
-    listener.log("Template geladen: " + templateName);
+    LOGGER.log(Level.INFO, "Template geladen: " + templateName);
     checkCancelled(listener);
 
     // ---- Mergen ----
     listener.status("⚙️ Template samenvoegen...");
-    listener.log("Template samenvoegen...");
+    LOGGER.log(Level.INFO, "Template samenvoegen...");
     StringWriter writer = new StringWriter();
     template.merge(context, writer);
     String finalOutput = writer.toString();
@@ -111,7 +117,7 @@ public final class GenerationService {
 
     // ---- Opslaan ----
     listener.status("💾 Opslaan...");
-    listener.log("Opslaan naar: " + outputFile.getAbsolutePath());
+    LOGGER.log(Level.INFO, "Opslaan naar: " + outputFile.getAbsolutePath());
     File parent = outputFile.getParentFile();
     if (parent != null && !parent.exists() && !parent.mkdirs()) {
       throw new IOException("Kon output-map niet aanmaken: " + parent);
@@ -121,7 +127,7 @@ public final class GenerationService {
     }
 
     listener.status("✅ Klaar.");
-    listener.log("Opgeslagen: " + outputFile.getAbsolutePath());
+    LOGGER.log(Level.INFO, "Opgeslagen: " + outputFile.getAbsolutePath());
     listener.progress(1, 1);
     return finalOutput;
   }
@@ -191,7 +197,7 @@ public final class GenerationService {
     listener.progress(-1, 1);
     List<Map<String, String>> rows = readExcel(excelFile, listener);
     listener.status("📊 " + rows.size() + " rijen gelezen");
-    listener.log(rows.size() + " rijen gelezen");
+    LOGGER.log(Level.INFO, rows.size() + " rijen gelezen");
 
     // ---- Template engine opzetten ----
     File templateBaseDir = templateFile.getParentFile();
@@ -204,7 +210,7 @@ public final class GenerationService {
     ve.init();
 
     Template template = ve.getTemplate(templateFile.getName(), "UTF-8");
-    listener.log("Template geladen: " + templateFile.getName());
+    LOGGER.log(Level.INFO, "Template geladen: " + templateFile.getName());
 
     // ---- Output-root aanmaken ----
     if (!opts.outputRoot.exists() && !opts.outputRoot.mkdirs()) {
@@ -297,7 +303,7 @@ public final class GenerationService {
         fos.write(finalOutput.getBytes(StandardCharsets.UTF_8));
       }
       written.add(outputFile);
-      listener.log("Geschreven: " + outputFile.getAbsolutePath());
+      LOGGER.log(Level.INFO, "Geschreven: " + outputFile.getAbsolutePath());
 
       done++;
       listener.progress(done, total);

@@ -17,7 +17,6 @@ import org.apache.velocity.runtime.RuntimeConstants;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class VelocityExcelGui extends Application {
 
@@ -50,8 +49,8 @@ public class VelocityExcelGui extends Application {
 
     templateButton.setOnAction(e -> {
       FileChooser fileChooser = new FileChooser();
-      fileChooser.getExtensionFilters()
-          .add(new FileChooser.ExtensionFilter("Velocity templates", "*.vm", "*.txt", "*.*"));
+      fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+          "Velocity templates", "*.vm", "*.txt", "*.*"));
       File selected = fileChooser.showOpenDialog(primaryStage);
       if (selected != null) {
         templateFile = selected;
@@ -62,7 +61,8 @@ public class VelocityExcelGui extends Application {
     excelButton.setOnAction(e -> {
       FileChooser fileChooser = new FileChooser();
       fileChooser.setInitialDirectory(templateFile.getParentFile());
-      fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel bestanden", "*.xlsx", "*.xls"));
+      fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+          "Excel bestanden", "*.xlsx", "*.xls"));
       File selected = fileChooser.showOpenDialog(primaryStage);
       if (selected != null) {
         excelFile = selected;
@@ -76,7 +76,8 @@ public class VelocityExcelGui extends Application {
         return;
       }
       FileChooser saver = new FileChooser();
-      saver.getExtensionFilters().add(new FileChooser.ExtensionFilter("Tekstbestand", "*.txt"));
+      saver.getExtensionFilters()
+          .add(new FileChooser.ExtensionFilter("Tekstbestand", "*.txt"));
       saver.setInitialFileName("output.txt");
       saver.setInitialDirectory(templateFile.getParentFile());
       File outputFile = saver.showSaveDialog(primaryStage);
@@ -85,8 +86,9 @@ public class VelocityExcelGui extends Application {
       }
     });
 
-    VBox root = new VBox(10, templateLabel, templateButton, templatePath, excelLabel, excelButton, excelPath,
-        new Separator(), outputLabel, outputButton, new Label("Log:"), logArea);
+    VBox root = new VBox(10, templateLabel, templateButton, templatePath,
+        excelLabel, excelButton, excelPath, new Separator(), outputLabel,
+        outputButton, new Label("Log:"), logArea);
     root.setPadding(new Insets(15));
     Scene scene = new Scene(root, 700, 550);
     primaryStage.setScene(scene);
@@ -104,8 +106,10 @@ public class VelocityExcelGui extends Application {
       // Velocity engine met FileResourceLoader
       VelocityEngine ve = new VelocityEngine();
       ve.setProperty(RuntimeConstants.RESOURCE_LOADERS, "file");
-      ve.setProperty("file.resource.loader.path", templateBaseDir.getAbsolutePath());
-      ve.setProperty("file.resource.loader.cache", "false"); // false tijdens testen
+      ve.setProperty("file.resource.loader.path",
+          templateBaseDir.getAbsolutePath());
+      ve.setProperty("file.resource.loader.cache", "false"); // false tijdens
+                                                             // testen
       ve.setProperty(RuntimeConstants.INPUT_ENCODING, "UTF-8");
       ve.init();
 
@@ -154,7 +158,8 @@ public class VelocityExcelGui extends Application {
     alert.showAndWait();
   }
 
-  private List<Map<String, String>> readExcelToMapList(File excelFile) throws IOException {
+  private List<Map<String, String>> readExcelToMapList(File excelFile)
+      throws IOException {
     List<Map<String, String>> result = new ArrayList<>();
     try (Workbook workbook = WorkbookFactory.create(excelFile)) {
       Sheet sheet = workbook.getSheetAt(0);
@@ -176,7 +181,8 @@ public class VelocityExcelGui extends Application {
         Row dataRow = rowIterator.next();
         Map<String, String> rowMap = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
-          Cell cell = dataRow.getCell(i, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+          Cell cell = dataRow.getCell(i,
+              Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
           rowMap.put(headers.get(i), getCellStringValue(cell));
         }
         result.add(rowMap);

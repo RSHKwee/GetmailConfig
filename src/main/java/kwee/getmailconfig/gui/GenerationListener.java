@@ -1,4 +1,4 @@
-package kwee.getmailconfig.main;
+package kwee.getmailconfig.gui;
 
 import java.io.File;
 

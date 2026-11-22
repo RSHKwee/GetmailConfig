@@ -3,11 +3,12 @@ package kwee.getmailconfig.main;
 import java.io.File;
 import java.util.List;
 
+import kwee.getmailconfig.gui.GenerationService;
+import kwee.getmailconfig.gui.GenerationService.PerRowOptions;
 import kwee.getmailconfig.library.AccountMigrator;
 import kwee.getmailconfig.library.ExcelTemplateGenerator;
 import kwee.getmailconfig.library.MailCheckAndClean;
 import kwee.getmailconfig.library.MailMover;
-import kwee.getmailconfig.main.GenerationService.PerRowOptions;
 
 public class MainCmd {
   public static UserSetting m_param = new UserSetting();
@@ -29,12 +30,14 @@ public class MainCmd {
 
     boolean b_accountConfig = false;
     boolean b_aclConfig = false;
-    boolean b_pwdConfig = true;
     boolean b_mailDirs = false;
     boolean b_mailMover = false;
     boolean b_mailCheck = false;
 
-    // Obsolete
+    // Per rij een file
+    boolean b_pwdConfig = true;
+
+    // Alles in één bestand
     boolean b_mbsyncConfig = false;
     boolean b_mbsyncTestConfig = false;
     boolean b_sslPwdConfig = false;

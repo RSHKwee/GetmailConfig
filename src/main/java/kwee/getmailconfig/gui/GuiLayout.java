@@ -29,8 +29,6 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 
 import kwee.getmailconfig.main.CliRunner;
-import kwee.getmailconfig.main.GenerationListener;
-import kwee.getmailconfig.main.GenerationService;
 import kwee.getmailconfig.main.Main;
 import kwee.getmailconfig.main.UserSetting;
 import kwee.getmailconfig.library.MessageConstants;
