@@ -107,10 +107,23 @@ public class ConfigTab {
     TableColumn<ConfigEntry, String> templateCol = new TableColumn<>(
         "Velocity template");
     templateCol.setCellValueFactory(c -> c.getValue().templateProperty());
-    templateCol.setCellFactory(TextFieldTableCell.forTableColumn());
+    templateCol.setCellFactory(col -> new TemplateCell(state::getTemplatesMap));
     templateCol
         .setOnEditCommit(ev -> ev.getRowValue().setTemplate(ev.getNewValue()));
-    templateCol.setPrefWidth(250);
+    templateCol.setPrefWidth(400);
+
+    // Tooltip met volledig pad op elke cel
+    templateCol.setCellFactory(col -> {
+      TemplateCell cell = new TemplateCell(state::getTemplatesMap);
+      cell.setOnMouseEntered(e -> {
+        if (cell.getItem() != null && !cell.getItem().isBlank()) {
+          javafx.scene.control.Tooltip t = new javafx.scene.control.Tooltip(
+              cell.getItem());
+          javafx.scene.control.Tooltip.install(cell, t);
+        }
+      });
+      return cell;
+    });
 
     TableColumn<ConfigEntry, String> outputCol = new TableColumn<>(
         "Output bestand");
@@ -128,6 +141,18 @@ public class ConfigTab {
     singleCol.setPrefWidth(120);
 
     table.getColumns().addAll(templateCol, outputCol, singleCol);
+    // Vul automatisch de output in als die leeg is en de template wijzigt
+    state.getRegels().forEach(ce -> koppelAutoOutput(ce));
+    state.getRegels()
+        .addListener((javafx.collections.ListChangeListener<ConfigEntry>) c -> {
+          while (c.next()) {
+            if (c.wasAdded()) {
+              for (ConfigEntry ce : c.getAddedSubList()) {
+                koppelAutoOutput(ce);
+              }
+            }
+          }
+        });
 
     // === Knoppen ===
     Button addBtn = new Button("+ Rij toevoegen");
@@ -176,5 +201,14 @@ public class ConfigTab {
     root.setPadding(new Insets(10));
     VBox.setVgrow(table, Priority.ALWAYS);
     return root;
+  }
+
+  private void koppelAutoOutput(ConfigEntry ce) {
+    ce.templateProperty().addListener((obs, oud, nieuw) -> {
+      if ((ce.getOutput() == null || ce.getOutput().isBlank()) && nieuw != null
+          && !nieuw.isBlank()) {
+        ce.setOutput(ConfigEntry.defaultOutputVoor(nieuw));
+      }
+    });
   }
 }

@@ -116,14 +116,34 @@ public class ExcelVelocityApp extends Application {
       return;
     }
 
+    // Verzamel bestaande paden (canoniek waar mogelijk)
     Set<String> bestaand = new HashSet<>();
     for (ConfigEntry ce : state.getRegels()) {
-      bestaand.add(ce.getTemplate());
+      String t = ce.getTemplate();
+      if (t == null || t.isBlank()) {
+        continue;
+      }
+      File f = new File(t);
+      if (!f.isAbsolute()) {
+        f = new File(map, t);
+      }
+      try {
+        bestaand.add(f.getCanonicalPath());
+      } catch (IOException ex) {
+        bestaand.add(f.getAbsolutePath());
+      }
     }
 
     for (File f : bestanden) {
-      if (!bestaand.contains(f.getName())) {
-        state.getRegels().add(new ConfigEntry(f.getName(),
+      String canoniek;
+      try {
+        canoniek = f.getCanonicalPath();
+      } catch (IOException ex) {
+        canoniek = f.getAbsolutePath();
+      }
+      if (!bestaand.contains(canoniek)) {
+        state.getRegels().add(new ConfigEntry(f.getAbsolutePath(), // volledig
+                                                                   // pad
             ConfigEntry.defaultOutputVoor(f.getName()), true));
       }
     }
@@ -163,8 +183,12 @@ public class ExcelVelocityApp extends Application {
           "Focus template: " + gekozen.getTemplate() + " → " + overrideOutput);
     }
     for (ConfigEntry ce : state.getRegels()) {
-      System.out.printf("  %s → %s (%s)%n", ce.getTemplate(), ce.getOutput(),
-          ce.isEenBestand() ? "één bestand" : "per rij");
+      File templateFile = new File(ce.getTemplate());
+      if (!templateFile.isAbsolute()) {
+        templateFile = new File(state.getTemplatesMap(), ce.getTemplate());
+      }
+      System.out.printf("  %s → %s (%s)%n", templateFile.getAbsolutePath(),
+          ce.getOutput(), ce.isEenBestand() ? "één bestand" : "per rij");
     }
 
     // TODO: roep hier je bestaande verwerkingsservice aan

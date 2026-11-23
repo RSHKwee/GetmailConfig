@@ -1,5 +1,7 @@
 package NewGUI;
 
+import java.io.File;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javafx.beans.property.*;
@@ -62,11 +64,12 @@ public class ConfigEntry {
    * Leidt een standaard output-bestandsnaam af uit de template-naam.
    * Bijvoorbeeld: "factuur.vm" -> "factuur.txt"
    */
-  public static String defaultOutputVoor(String templateNaam) {
-    if (templateNaam == null || templateNaam.isBlank()) {
+  public static String defaultOutputVoor(String templatePad) {
+    if (templatePad == null || templatePad.isBlank()) {
       return "";
     }
-    String base = templateNaam;
+    // Strip eventuele map
+    String base = new File(templatePad).getName();
     int dot = base.lastIndexOf('.');
     if (dot > 0) {
       base = base.substring(0, dot);
