@@ -7,8 +7,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.CheckBoxTableCell;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -19,20 +17,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ExcelVelocityApp extends Application {
 
   private static final Path STANDAARD_CONFIG = Path
       .of(System.getProperty("user.home"), ".excel-velocity", "config.json");
 
+  // Gedeelde state
   private final TextField excelField = new TextField();
   private final TextField templateDirField = new TextField();
   private final TextField outputDirField = new TextField();
 
   private final ObservableList<ConfigEntry> configData = FXCollections
       .observableArrayList();
-  private final TableView<ConfigEntry> configTable = new TableView<>(
-      configData);
+
+  // Hoofdtab
+  private final ListView<ConfigEntry> templateList = new ListView<>(configData);
+  private final TextField gekozenOutputField = new TextField();
+  private final Label gekozenTemplateLabel = new Label("(geen selectie)");
 
   private final Label statusLabel = new Label("Gereed");
 
@@ -40,7 +44,53 @@ public class ExcelVelocityApp extends Application {
 
   @Override
   public void start(Stage stage) {
-    // === Invoervelden ===
+    TabPane tabs = new TabPane();
+    tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+    Tab verwerkingTab = new Tab("Verwerking", bouwVerwerkingTab(stage));
+    Tab configuratieTab = new Tab("Configuratie",
+        new ConfigTab(configData).bouwInhoud());
+    tabs.getTabs().addAll(verwerkingTab, configuratieTab);
+
+    VBox root = new VBox(tabs, bouwStatusBar());
+    VBox.setVgrow(tabs, Priority.ALWAYS);
+
+    Scene scene = new Scene(root, 1050, 800);
+    stage.setTitle("Excel → Velocity verwerking");
+    stage.setScene(scene);
+
+    // Automatisch laden
+    if (Files.exists(STANDAARD_CONFIG)) {
+      try {
+        AppConfig cfg = ConfigService.load(STANDAARD_CONFIG.toFile());
+        pasConfigToe(cfg);
+        laatsteConfigBestand = STANDAARD_CONFIG.toFile();
+        statusLabel
+            .setText("Automatisch geladen: " + STANDAARD_CONFIG.getFileName());
+      } catch (IOException ex) {
+        statusLabel.setText(
+            "Kon standaardconfiguratie niet laden: " + ex.getMessage());
+      }
+    }
+
+    // Automatisch opslaan bij sluiten
+    stage.setOnCloseRequest(ev -> {
+      try {
+        Files.createDirectories(STANDAARD_CONFIG.getParent());
+        ConfigService.save(verzamelConfig(), STANDAARD_CONFIG.toFile());
+      } catch (IOException ignored) {
+      }
+    });
+
+    stage.show();
+  }
+
+  // =========================================================
+  // Tab 1: Verwerking
+  // =========================================================
+  private VBox bouwVerwerkingTab(Stage stage) {
+
+    // --- Paden ---
     GridPane inputGrid = new GridPane();
     inputGrid.setHgap(10);
     inputGrid.setVgap(10);
@@ -52,7 +102,10 @@ public class ExcelVelocityApp extends Application {
     HBox.setHgrow(excelField, Priority.ALWAYS);
 
     Button templateBtn = new Button("...");
-    templateBtn.setOnAction(e -> chooseDirectory(stage, templateDirField));
+    templateBtn.setOnAction(e -> {
+      chooseDirectory(stage, templateDirField);
+      laadTemplatesUitMap();
+    });
     HBox templateBox = new HBox(5, templateDirField, templateBtn);
     HBox.setHgrow(templateDirField, Priority.ALWAYS);
 
@@ -73,63 +126,38 @@ public class ExcelVelocityApp extends Application {
     cc1.setHgrow(Priority.ALWAYS);
     inputGrid.getColumnConstraints().addAll(cc0, cc1);
 
-    // === Configuratie tabel ===
-    setupTable();
-
-    Button addRowBtn = new Button("+ Rij toevoegen");
-    addRowBtn.setOnAction(e -> configData.add(new ConfigEntry("", "", true)));
-
-    Button removeRowBtn = new Button("- Rij verwijderen");
-    removeRowBtn.setOnAction(e -> {
-      ConfigEntry selected = configTable.getSelectionModel().getSelectedItem();
-      if (selected != null) {
-        configData.remove(selected);
-      }
-    });
-
-    Button browseTemplateBtn = new Button("Template kiezen...");
-    browseTemplateBtn.setOnAction(e -> {
-      ConfigEntry selected = configTable.getSelectionModel().getSelectedItem();
-      if (selected == null) {
-        return;
-      }
-      FileChooser fc = new FileChooser();
-      fc.setTitle("Kies Velocity template");
-      if (!templateDirField.getText().isBlank()) {
-        File dir = new File(templateDirField.getText());
-        if (dir.isDirectory()) {
-          fc.setInitialDirectory(dir);
+    // --- Template-lijst + output-veld ---
+    templateList.setCellFactory(lv -> new ListCell<>() {
+      @Override
+      protected void updateItem(ConfigEntry ce, boolean empty) {
+        super.updateItem(ce, empty);
+        if (empty || ce == null) {
+          setText(null);
+        } else {
+          String richting = ce.isEenBestand() ? "één bestand" : "per rij";
+          setText(ce.getTemplate() + "  →  " + ce.getOutput() + "  (" + richting
+              + ")");
         }
       }
-      File f = fc.showOpenDialog(stage);
-      if (f != null) {
-        selected.setTemplate(f.getName());
-      }
     });
+    templateList.getSelectionModel().selectedItemProperty()
+        .addListener((obs, oud, nieuw) -> toonGekozenTemplate(nieuw));
 
-    Button saveBtn = new Button("Configuratie opslaan...");
-    saveBtn.setOnAction(e -> opslaanConfiguratie(stage));
+    VBox templateBox2 = new VBox(5,
+        new Label("Kies een template uit de configuratie:"), templateList,
+        new Label("Gekozen template:"), gekozenTemplateLabel,
+        new Label("Output bestand (aanpasbaar):"), gekozenOutputField);
+    VBox.setVgrow(templateList, Priority.ALWAYS);
 
-    Button loadBtn = new Button("Configuratie laden...");
-    loadBtn.setOnAction(e -> ladenConfiguratie(stage));
-
-    HBox tableButtons = new HBox(10, addRowBtn, removeRowBtn, browseTemplateBtn,
-        saveBtn, loadBtn);
-    tableButtons.setPadding(new Insets(5, 0, 5, 0));
-
-    VBox tableBox = new VBox(5, new Label("Configuratie (template → output):"),
-        tableButtons, configTable);
-    VBox.setVgrow(configTable, Priority.ALWAYS);
-
-    // === 10 Verwerkingsbuttons ===
+    // --- 10 verwerkingsknoppen ---
     GridPane buttonGrid = new GridPane();
     buttonGrid.setHgap(10);
     buttonGrid.setVgap(10);
-    buttonGrid.setPadding(new Insets(10));
+    buttonGrid.setPadding(new Insets(10, 0, 0, 0));
 
     for (int i = 1; i <= 10; i++) {
       final int nr = i;
-      Button b = new Button("Verwerking " + i);
+      Button b = new Button("Verwerking " + nr);
       b.setMaxWidth(Double.MAX_VALUE);
       b.setPrefHeight(40);
       b.setOnAction(e -> startVerwerking(nr));
@@ -142,82 +170,76 @@ public class ExcelVelocityApp extends Application {
       buttonGrid.getColumnConstraints().add(cc);
     }
 
-    // === Statusbalk ===
+    VBox root = new VBox(10, inputGrid, templateBox2, buttonGrid);
+    root.setPadding(new Insets(10));
+    VBox.setVgrow(templateBox2, Priority.ALWAYS);
+    return root;
+  }
+
+  // =========================================================
+  // Statusbalk
+  // =========================================================
+  private HBox bouwStatusBar() {
     HBox statusBar = new HBox(statusLabel);
     statusBar.setPadding(new Insets(5, 10, 5, 10));
     statusBar.setStyle("-fx-background-color: #e0e0e0;");
     statusBar.setAlignment(Pos.CENTER_LEFT);
+    return statusBar;
+  }
 
-    // === Layout samenstellen ===
-    VBox root = new VBox(10, inputGrid, tableBox, buttonGrid, statusBar);
-    root.setPadding(new Insets(10));
-    VBox.setVgrow(tableBox, Priority.ALWAYS);
+  // =========================================================
+  // Template-lijst & output-veld
+  // =========================================================
+  private void toonGekozenTemplate(ConfigEntry ce) {
+    if (ce == null) {
+      gekozenTemplateLabel.setText("(geen selectie)");
+      gekozenOutputField.clear();
+      return;
+    }
+    gekozenTemplateLabel.setText(ce.getTemplate());
+    String output = ce.getOutput();
+    if (output == null || output.isBlank()) {
+      output = ConfigEntry.defaultOutputVoor(ce.getTemplate());
+    }
+    gekozenOutputField.setText(output);
+  }
 
-    Scene scene = new Scene(root, 1000, 800);
-    stage.setTitle("Excel → Velocity verwerking");
-    stage.setScene(scene);
-
-    // === Automatisch laatste configuratie laden ===
-    if (Files.exists(STANDAARD_CONFIG)) {
-      try {
-        pasConfigToe(ConfigService.load(STANDAARD_CONFIG.toFile()));
-        laatsteConfigBestand = STANDAARD_CONFIG.toFile();
-        statusLabel
-            .setText("Automatisch geladen: " + STANDAARD_CONFIG.getFileName());
-      } catch (IOException ex) {
-        statusLabel.setText(
-            "Kon standaardconfiguratie niet laden: " + ex.getMessage());
-      }
+  /**
+   * Leest de templates-map; voegt nieuwe .vm-bestanden toe zonder bestaande te
+   * verwijderen.
+   */
+  private void laadTemplatesUitMap() {
+    String dir = templateDirField.getText();
+    if (dir == null || dir.isBlank()) {
+      return;
+    }
+    File map = new File(dir);
+    if (!map.isDirectory()) {
+      return;
     }
 
-    // === Automatisch opslaan bij sluiten ===
-    stage.setOnCloseRequest(ev -> {
-      try {
-        Files.createDirectories(STANDAARD_CONFIG.getParent());
-        ConfigService.save(verzamelConfig(), STANDAARD_CONFIG.toFile());
-      } catch (IOException ignored) {
-        // stil falen; gebruiker sluit de app
+    File[] bestanden = map
+        .listFiles((d, naam) -> naam.toLowerCase().endsWith(".vm"));
+    if (bestanden == null) {
+      return;
+    }
+
+    Set<String> bestaand = new HashSet<>();
+    for (ConfigEntry ce : configData) {
+      bestaand.add(ce.getTemplate());
+    }
+
+    for (File f : bestanden) {
+      if (!bestaand.contains(f.getName())) {
+        configData.add(new ConfigEntry(f.getName(),
+            ConfigEntry.defaultOutputVoor(f.getName()), true));
       }
-    });
-
-    stage.show();
+    }
   }
 
-  private void setupTable() {
-    configTable.setEditable(true);
-    configTable.setColumnResizePolicy(
-        TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-
-    TableColumn<ConfigEntry, String> templateCol = new TableColumn<>(
-        "Velocity template");
-    templateCol.setCellValueFactory(c -> c.getValue().templateProperty());
-    templateCol.setCellFactory(TextFieldTableCell.forTableColumn());
-    templateCol
-        .setOnEditCommit(ev -> ev.getRowValue().setTemplate(ev.getNewValue()));
-    templateCol.setPrefWidth(250);
-
-    TableColumn<ConfigEntry, String> outputCol = new TableColumn<>(
-        "Output bestand");
-    outputCol.setCellValueFactory(c -> c.getValue().outputProperty());
-    outputCol.setCellFactory(TextFieldTableCell.forTableColumn());
-    outputCol
-        .setOnEditCommit(ev -> ev.getRowValue().setOutput(ev.getNewValue()));
-    outputCol.setPrefWidth(250);
-
-    TableColumn<ConfigEntry, Boolean> singleCol = new TableColumn<>(
-        "Eén bestand");
-    singleCol.setCellValueFactory(c -> c.getValue().eenBestandProperty());
-    singleCol.setCellFactory(CheckBoxTableCell.forTableColumn(singleCol));
-    singleCol.setEditable(true);
-    singleCol.setPrefWidth(120);
-
-    configTable.getColumns().addAll(templateCol, outputCol, singleCol);
-
-    // Voorbeelddata (alleen bij eerste start)
-    configData.add(new ConfigEntry("factuur.vm", "facturen.txt", true));
-    configData.add(new ConfigEntry("klant.vm", "klant_${rij}.txt", false));
-  }
-
+  // =========================================================
+  // Bestandskeuze
+  // =========================================================
   private void chooseExcelFile(Stage stage) {
     FileChooser fc = new FileChooser();
     fc.setTitle("Kies Excel bestand");
@@ -239,8 +261,10 @@ public class ExcelVelocityApp extends Application {
     }
   }
 
+  // =========================================================
+  // Verwerking
+  // =========================================================
   private void startVerwerking(int nummer) {
-    // Validatie
     if (excelField.getText().isBlank()) {
       toonFout("Selecteer eerst een Excel bestand.");
       return;
@@ -258,11 +282,18 @@ public class ExcelVelocityApp extends Application {
       return;
     }
 
+    ConfigEntry gekozen = templateList.getSelectionModel().getSelectedItem();
+    String overrideOutput = gekozenOutputField.getText();
+
     statusLabel.setText("Verwerking " + nummer + " gestart...");
     System.out.println("=== Verwerking " + nummer + " ===");
     System.out.println("Excel:     " + excelField.getText());
     System.out.println("Templates: " + templateDirField.getText());
     System.out.println("Output:    " + outputDirField.getText());
+    if (gekozen != null) {
+      System.out.println(
+          "Focus template: " + gekozen.getTemplate() + " → " + overrideOutput);
+    }
     for (ConfigEntry ce : configData) {
       System.out.printf("  %s → %s (%s)%n", ce.getTemplate(), ce.getOutput(),
           ce.isEenBestand() ? "één bestand" : "per rij");
@@ -272,8 +303,15 @@ public class ExcelVelocityApp extends Application {
     statusLabel.setText("Verwerking " + nummer + " gereed.");
   }
 
-  // === Configuratie save/load ===
+  private void toonFout(String msg) {
+    Alert a = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
+    a.setHeaderText(null);
+    a.showAndWait();
+  }
 
+  // =========================================================
+  // Configuratie save/load (volledige config)
+  // =========================================================
   private AppConfig verzamelConfig() {
     AppConfig cfg = new AppConfig();
     cfg.setExcelBestand(excelField.getText());
@@ -288,73 +326,6 @@ public class ExcelVelocityApp extends Application {
     templateDirField.setText(cfg.getTemplatesMap());
     outputDirField.setText(cfg.getOutputMap());
     configData.setAll(cfg.getRegels());
-  }
-
-  private void opslaanConfiguratie(Stage stage) {
-    FileChooser fc = new FileChooser();
-    fc.setTitle("Configuratie opslaan");
-    fc.getExtensionFilters()
-        .add(new FileChooser.ExtensionFilter("JSON", "*.json"));
-    if (laatsteConfigBestand != null) {
-      fc.setInitialFileName(laatsteConfigBestand.getName());
-      File parent = laatsteConfigBestand.getParentFile();
-      if (parent != null && parent.isDirectory()) {
-        fc.setInitialDirectory(parent);
-      }
-    } else {
-      fc.setInitialFileName("config.json");
-    }
-    File f = fc.showSaveDialog(stage);
-    if (f == null) {
-      return;
-    }
-
-    // Zorg dat extensie .json is
-    if (!f.getName().toLowerCase().endsWith(".json")) {
-      f = new File(f.getAbsolutePath() + ".json");
-    }
-
-    try {
-      ConfigService.save(verzamelConfig(), f);
-      laatsteConfigBestand = f;
-      statusLabel.setText("Configuratie opgeslagen: " + f.getName());
-    } catch (IOException ex) {
-      new Alert(Alert.AlertType.ERROR, "Opslaan mislukt: " + ex.getMessage(),
-          ButtonType.OK).showAndWait();
-    }
-  }
-
-  private void ladenConfiguratie(Stage stage) {
-    FileChooser fc = new FileChooser();
-    fc.setTitle("Configuratie laden");
-    fc.getExtensionFilters()
-        .add(new FileChooser.ExtensionFilter("JSON", "*.json"));
-    if (laatsteConfigBestand != null) {
-      File parent = laatsteConfigBestand.getParentFile();
-      if (parent != null && parent.isDirectory()) {
-        fc.setInitialDirectory(parent);
-      }
-    }
-    File f = fc.showOpenDialog(stage);
-    if (f == null) {
-      return;
-    }
-
-    try {
-      AppConfig cfg = ConfigService.load(f);
-      pasConfigToe(cfg);
-      laatsteConfigBestand = f;
-      statusLabel.setText("Configuratie geladen: " + f.getName());
-    } catch (IOException ex) {
-      new Alert(Alert.AlertType.ERROR, "Laden mislukt: " + ex.getMessage(),
-          ButtonType.OK).showAndWait();
-    }
-  }
-
-  private void toonFout(String msg) {
-    Alert a = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
-    a.setHeaderText(null);
-    a.showAndWait();
   }
 
   public static void main(String[] args) {

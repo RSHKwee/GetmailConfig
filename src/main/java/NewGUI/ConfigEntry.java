@@ -10,7 +10,6 @@ public class ConfigEntry {
   private final StringProperty output = new SimpleStringProperty("");
   private final BooleanProperty eenBestand = new SimpleBooleanProperty(true);
 
-  /** Verplicht voor Jackson. */
   public ConfigEntry() {
   }
 
@@ -19,8 +18,6 @@ public class ConfigEntry {
     this.output.set(output);
     this.eenBestand.set(eenBestand);
   }
-
-  // --- JavaFX properties (voor TableView) ---
 
   @JsonIgnore
   public StringProperty templateProperty() {
@@ -36,8 +33,6 @@ public class ConfigEntry {
   public BooleanProperty eenBestandProperty() {
     return eenBestand;
   }
-
-  // --- Gewone accessors (voor callbacks) ---
 
   public String getTemplate() {
     return template.get();
@@ -63,7 +58,23 @@ public class ConfigEntry {
     eenBestand.set(v);
   }
 
-  // --- Jackson (de)serialisatie ---
+  /**
+   * Leidt een standaard output-bestandsnaam af uit de template-naam.
+   * Bijvoorbeeld: "factuur.vm" -> "factuur.txt"
+   */
+  public static String defaultOutputVoor(String templateNaam) {
+    if (templateNaam == null || templateNaam.isBlank()) {
+      return "";
+    }
+    String base = templateNaam;
+    int dot = base.lastIndexOf('.');
+    if (dot > 0) {
+      base = base.substring(0, dot);
+    }
+    return base + ".txt";
+  }
+
+  // --- Jackson ---
 
   @JsonProperty("template")
   private String jsonTemplate() {
